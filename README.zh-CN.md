@@ -8,7 +8,7 @@
 
 ## 一键清理（Windows）
 
-不想敲命令的话，直接双击 `一键清理.bat`（与 windows-cleanup.ps1 放在同一目录）：
+如不便手动输入命令，可直接双击 `一键清理.bat`（将其与 windows-cleanup.ps1 置于同一目录）：
 
 * [1] 只扫描 - 查看可清理内容，不删除任何文件
 * [2] 快速清理 - 删除 100% 垃圾（SAFE 项）
@@ -26,12 +26,12 @@
 | ASK | 可再生的但可能有用的内容 | `-Clean -Yes` |
 | ADMIN | 系统级，需要管理员权限 | 管理员环境下 `-Clean -Yes` |
 
-默认是只扫描不删除。**在加上 `-Clean` 参数之前，不会删除任何东西。**
+默认仅执行扫描，不删除任何文件。**在添加 `-Clean` 参数之前，不会删除任何内容。**
 
 ## 使用方法
 
 ```powershell
-# 只报告可清理内容（不做任何修改）
+# 仅报告可清理内容（不做任何修改）
 powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Scan
 
 # 删除 SAFE 项（浏览器缓存、临时文件、崩溃转储、缩略图等）
@@ -58,9 +58,9 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
 ## 说明
 
 * 支持 Windows 10 / 11，兼容 Windows PowerShell 5.1 和 PowerShell 7+。
-* 只使用环境变量，没有写死用户名，可适配任意用户环境。
+* 仅使用环境变量，未对用户名进行硬编码，可适配任意用户环境。
 * 删除的文件不会进入回收站（回收站本身的清空除外）。
-* 被程序占用的文件会自动跳过并提示；关闭对应程序后重跑即可。
+* 被程序占用的文件将自动跳过并给出提示；关闭相应程序后重新运行即可。
 * conda 包缓存建议使用 `conda clean --all` 清理，不要直接删除目录。
 * 删除系统 Package Cache / VS 安装包缓存后，部分程序在修复或卸载时需要
   重新下载安装器。

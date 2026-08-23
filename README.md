@@ -58,10 +58,11 @@ For ADMIN items, run the script from an elevated PowerShell
 ## Notes
 
 * Works on Windows 10/11 with Windows PowerShell 5.1 or PowerShell 7+.
-* Uses only environment variables - no hardcoded usernames, adapts to any profile.
+* Uses only environment variables and contains no hardcoded usernames, so it
+  adapts to any user profile.
 * Deleted items are NOT sent to the Recycle Bin (except the Recycle Bin itself).
 * Locked files (app currently running) are skipped and reported; close the app
-  and rerun.
+  and run the script again.
 * For conda package caches, prefer `conda clean --all` instead of deleting
   folders directly.
 * Deleting the system Package Cache / VS installer cache means some programs
