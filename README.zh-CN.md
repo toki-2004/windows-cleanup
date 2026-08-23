@@ -64,8 +64,6 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
 * conda 包缓存建议使用 `conda clean --all` 清理，不要直接删除目录。
 * 删除系统 Package Cache / VS 安装包缓存后，部分程序在修复或卸载时需要
   重新下载安装器。
-* 脚本源自一次真实的 C 盘清理实践（2026 年 8 月，释放约 26 GB），
-  目录辨别方法与安全红线详见仓库创建者的本地清理日志。
 
 ## 许可证
 
