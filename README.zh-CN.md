@@ -1,0 +1,62 @@
+# Windows 清理助手
+
+> **语言：** English ([English README](README.md)) | 简体中文
+
+一个安全、通用的 PowerShell 脚本：扫描并清理 Windows 常见垃圾与缓存，包括
+浏览器缓存、临时文件、崩溃转储、缩略图缓存、包管理器缓存、更新器残留、
+旧版启动器版本、系统缓存等。
+
+## 安全第一
+
+所有可清理项目分为三类：
+
+| 类别 | 含义 | 删除方式 |
+| --- | --- | --- |
+| SAFE | 100% 无用、可自动再生的内容 | `-Clean` |
+| ASK | 可再生的但可能有用的内容 | `-Clean -Yes` |
+| ADMIN | 系统级，需要管理员权限 | 管理员环境下 `-Clean -Yes` |
+
+默认是只扫描不删除。**在加上 `-Clean` 参数之前，不会删除任何东西。**
+
+## 使用方法
+
+```powershell
+# 只报告可清理内容（不做任何修改）
+powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Scan
+
+# 删除 SAFE 项（浏览器缓存、临时文件、崩溃转储、缩略图等）
+powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean
+
+# 同时删除 ASK 项（包缓存、更新器残留、回收站等）
+powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
+```
+
+系统级（ADMIN）项目需要在管理员 PowerShell 中运行：
+右键点击"Windows PowerShell"或"终端"图标 → 选择"以管理员身份运行"，
+然后再执行上面的命令。
+
+## 清理内容
+
+* SAFE：用户临时文件、浏览器缓存（Edge / Chrome / Brave / Firefox）、
+  崩溃转储、缩略图缓存、WebCache、MATLAB ServiceHost 旧版本。
+* ASK：uv / npm / pip / Unity 缓存、游戏 scratch 缓存、腾讯系应用缓存
+  （微信小程序运行时）、WPS 插件组件、更新器残留安装包、
+  旧版启动器版本、回收站。
+* ADMIN：Windows 临时文件、Windows 更新下载缓存、Visual Studio 安装包缓存、
+  系统 Package Cache、Logitech G HUB 缓存、天美游戏更新包残留。
+
+## 说明
+
+* 支持 Windows 10 / 11，兼容 Windows PowerShell 5.1 和 PowerShell 7+。
+* 只使用环境变量，没有写死用户名，可适配任意用户环境。
+* 删除的文件不会进入回收站（回收站本身的清空除外）。
+* 被程序占用的文件会自动跳过并提示；关闭对应程序后重跑即可。
+* conda 包缓存建议使用 `conda clean --all` 清理，不要直接删除目录。
+* 删除系统 Package Cache / VS 安装包缓存后，部分程序在修复或卸载时需要
+  重新下载安装器。
+* 脚本源自一次真实的 C 盘清理实践（2026 年 8 月，释放约 26 GB），
+  目录辨别方法与安全红线详见仓库创建者的本地清理日志。
+
+## 许可证
+
+MIT

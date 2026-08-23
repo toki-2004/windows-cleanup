@@ -1,5 +1,7 @@
 # Windows Cleanup Helper
 
+> **Language:** English | [简体中文 (Chinese)](README.zh-CN.md)
+
 A safe, generalized PowerShell script that scans and cleans common Windows junk:
 browser caches, temp files, crash dumps, thumbnail caches, package manager
 caches, updater leftovers, old launcher versions, system caches, and more.
