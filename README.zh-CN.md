@@ -69,4 +69,4 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
 
 ## 许可证
 
-MIT
+本项目基于 [MIT 许可证](LICENSE) 发布。

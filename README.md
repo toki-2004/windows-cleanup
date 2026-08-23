@@ -70,4 +70,4 @@ For ADMIN items, run the script from an elevated PowerShell
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
