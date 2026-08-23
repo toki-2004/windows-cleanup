@@ -8,7 +8,7 @@ caches, updater leftovers, old launcher versions, system caches, and more.
 
 ## One-click (Windows)
 
-Prefer a double-click over typing commands? Use `一键清理.bat`
+To run the tool without typing commands, double-click `一键清理.bat`
 (keep it in the same folder as `windows-cleanup.ps1`):
 
 * [1] Scan only - report what can be cleaned, deletes nothing
