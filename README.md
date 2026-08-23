@@ -6,7 +6,7 @@ A safe, generalized PowerShell script that scans and cleans common Windows junk:
 browser caches, temp files, crash dumps, thumbnail caches, package manager
 caches, updater leftovers, old launcher versions, system caches, and more.
 
-## One-click (Windows)
+![Scan report](assets/scan-report.png)
 
 To run the tool without typing commands, double-click `一键清理.bat`
 (keep it in the same folder as `windows-cleanup.ps1`):
@@ -17,7 +17,8 @@ To run the tool without typing commands, double-click `一键清理.bat`
 * [4] Admin deep clean - also ADMIN items (UAC prompt)
 * [0] Exit
 
-## Safety first
+![Menu](assets/menu.png)
+![Disk before/after](assets/disk-before-after.png)
 
 Everything is split into three categories:
 
