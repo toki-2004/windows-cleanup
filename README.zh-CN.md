@@ -3,8 +3,9 @@
 > **语言：** English ([English README](README.md)) | 简体中文
 
 一个安全、通用的 PowerShell 脚本：扫描并清理 Windows 常见垃圾与缓存，包括
-浏览器缓存、临时文件、崩溃转储、缩略图缓存、包管理器缓存、更新器残留、
-旧版启动器版本、系统缓存等。
+浏览器/Steam 缓存、临时文件、崩溃转储、缩略图缓存、微信/QQ/剪映日志、
+GPU 着色器缓存、包管理器缓存（含 conda）、更新器残留、旧版启动器版本、
+系统日志与转储等。
 
 ![扫描报告](assets/scan-report.png)
 
@@ -49,20 +50,36 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
 ## 清理内容
 
 * SAFE：用户临时文件、浏览器缓存（Edge / Chrome / Brave / Firefox）、
-  崩溃转储、缩略图缓存、WebCache、MATLAB ServiceHost 旧版本。
-* ASK：uv / npm / pip / Unity 缓存、游戏 scratch 缓存、腾讯系应用缓存
-  （微信小程序运行时）、WPS 插件组件、更新器残留安装包、
-  旧版启动器版本、回收站。
-* ADMIN：Windows 临时文件、Windows 更新下载缓存、Visual Studio 安装包缓存、
-  系统 Package Cache、Logitech G HUB 缓存、天美游戏更新包残留。
+  Steam 内置浏览器缓存、崩溃转储、缩略图缓存、WebCache、MATLAB ServiceHost
+  旧版本、微信/QQ 日志与崩溃信息、剪映运行时缓存、NVIDIA / DirectX 着色器
+  缓存、用户级错误报告（WER）。
+* ASK：uv / npm / pip / Unity / cargo 缓存、conda 包缓存（自动调用
+  `conda clean --all`）、游戏 scratch 缓存、腾讯系应用缓存（微信小程序
+  运行时）、WPS 插件组件、浏览器 Service Worker 数据、更新器残留安装包
+  （含抖音 app_shell_cache）、旧版启动器版本、回收站。
+* ADMIN：Windows 临时文件、Windows 更新下载缓存、CBS 日志、系统错误报告
+  （WER）、内核/内存转储（Minidump / LiveKernelReports / MEMORY.DMP）、
+  Visual Studio 安装包缓存、系统 Package Cache、Logitech G HUB 缓存、
+  天美游戏更新包残留。
+
+## 安全设计
+
+* 浏览器与 Steam 缓存按固定目录名精确匹配（Cache、Code Cache、GPUCache 等），
+  不触碰书签、密码、Cookie、历史记录与本地存储。
+* 聊天数据零接触：微信/QQ 只清理 log、crashinfo 与缓存目录，
+  FileStorage、xwechat_files 等聊天记录目录不在清理范围。
+* 临时目录与系统日志（Temp、CBS、WER、Minidump 等）只清空内容、保留目录本身。
+* conda 包缓存通过 `conda clean --all` 清理，找不到 conda 时自动跳过，
+  不直接删除目录。
+* 被程序占用的文件自动跳过并给出提示；关闭相应程序后重新运行即可。
 
 ## 说明
 
 * 支持 Windows 10 / 11，兼容 Windows PowerShell 5.1 和 PowerShell 7+。
 * 仅使用环境变量，未对用户名进行硬编码，可适配任意用户环境。
 * 删除的文件不会进入回收站（回收站本身的清空除外）。
-* 被程序占用的文件将自动跳过并给出提示；关闭相应程序后重新运行即可。
-* conda 包缓存建议使用 `conda clean --all` 清理，不要直接删除目录。
+* 删除 GPU 着色器缓存（NVIDIA DXCache/GLCache、D3DSCache）后，首次启动游戏
+  需要重新编译着色器，加载稍慢属正常现象。
 * 删除系统 Package Cache / VS 安装包缓存后，部分程序在修复或卸载时需要
   重新下载安装器。
 
