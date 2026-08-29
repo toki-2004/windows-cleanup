@@ -174,8 +174,29 @@ Add-Item (Join-Path $R "Tencent\xwechat\xplugin") "WeChat(New) mini-program plug
 Add-Item (Join-Path $R "Tencent\WeChat\XPlugin") "WeChat classic mini-program plugin cache (close WeChat first)" "ASK" -Action "WeChatClean"
 Add-Item (Join-Path $R "Kingsoft\wps\addons") "WPS addons/components" "ASK"
 
-# conda: cleaned via "conda clean --all" in clean mode, never deleted directly
-Add-Item (Join-Path $env:USERPROFILE "miniconda3\pkgs") "conda package cache (conda clean)" "ASK" -Action "CondaClean"
+# conda: cleaned via "conda clean --all" in clean mode, never deleted directly.
+# Resolve the install from conda.exe itself so the scanned pkgs dir and the
+# "conda clean" run always belong to the same install (PATH may point at a
+# different distribution than %USERPROFILE%\miniconda3).
+function Get-CondaInstall {
+  $exe = Join-Path $env:USERPROFILE "miniconda3\Scripts\conda.exe"
+  if (-not (Test-Path -LiteralPath $exe)) {
+    $cmd = Get-Command conda -ErrorAction SilentlyContinue
+    if ($cmd) { $exe = $cmd.Source }
+  }
+  if (-not $exe -or -not (Test-Path -LiteralPath $exe)) { return $null }
+  $root = Split-Path -Parent (Split-Path -Parent $exe)  # strip Scripts\condabin + exe
+  if (-not (Test-Path -LiteralPath (Join-Path $root "pkgs"))) {
+    $root = Split-Path -Parent $exe  # some layouts install conda.exe one level down
+  }
+  $pkgs = Join-Path $root "pkgs"
+  if (-not (Test-Path -LiteralPath $pkgs)) { return $null }
+  return @{ Exe = $exe; Pkgs = $pkgs }
+}
+$condaInstall = Get-CondaInstall
+if ($condaInstall) {
+  Add-Item $condaInstall.Pkgs "conda package cache (conda clean)" "ASK" -Action "CondaClean"
+}
 Add-Item (Join-Path $env:USERPROFILE ".cargo\registry") "cargo registry cache" "ASK"
 Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK"
 
@@ -183,7 +204,7 @@ Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK
 $rbPath = "C:\`$Recycle.Bin"
 $rbSize = Get-SizeMB $rbPath
 if ($rbSize -gt 0) {
-  $script:items += [PSCustomObject]@{ Path = $rbPath; Label = "Recycle Bin (permanent)"; Cat = "ASK"; SizeMB = $rbSize; ClearContents = $false; Action = "RecycleBin" }
+  $script:items += [PSCustomObject]@{ Path = $rbPath; Label = "Recycle Bin, ALL drives (permanent)"; Cat = "ASK"; SizeMB = $rbSize; ClearContents = $false; Action = "RecycleBin" }
 }
 
 # Updater leftover installers: installer.exe inside *updater* folders
@@ -297,13 +318,9 @@ if ($Clean) {
       continue
     }
     if ($it.Action -eq "CondaClean") {
-      $conda = Join-Path $env:USERPROFILE "miniconda3\Scripts\conda.exe"
-      if (-not (Test-Path -LiteralPath $conda)) {
-        $cmd = Get-Command conda -ErrorAction SilentlyContinue
-        if ($cmd) { $conda = $cmd.Source }
-      }
-      if ($conda -and (Test-Path -LiteralPath $conda)) {
-        & $conda clean --all -y | Out-Null
+      $ci = Get-CondaInstall
+      if ($ci) {
+        & $ci.Exe clean --all -y | Out-Null
         $after = Get-SizeMB $it.Path
         $f = $it.SizeMB - $after
         if ($f -gt 0) { Write-Output ("Deleted " + $it.Label + " (-" + $f + " MB)") }
