@@ -58,9 +58,9 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
   运行时）、WPS 插件组件、浏览器 Service Worker 数据、更新器残留安装包
   （含抖音 app_shell_cache）、旧版启动器版本、回收站。
 * ADMIN：Windows 临时文件、Windows 更新下载缓存、CBS 日志、系统错误报告
-  （WER）、内核/内存转储（Minidump / LiveKernelReports / MEMORY.DMP）、
-  Visual Studio 安装包缓存、系统 Package Cache、Logitech G HUB 缓存、
-  天美游戏更新包残留。
+  （WER）、Visual Studio 安装包缓存、系统 Package Cache、Logitech G HUB
+  缓存、天美游戏更新包残留。内核/内存转储（Minidump / MEMORY.DMP 等）刻意
+  不清理：它们是蓝屏/卡死后唯一的现场证据。
 
 ## 安全设计
 

@@ -59,9 +59,10 @@ For ADMIN items, run the script from an elevated PowerShell
   updater leftover installers (including Douyin app_shell_cache), old launcher
   versions, Recycle Bin.
 * ADMIN: Windows Temp, Windows Update download cache, CBS logs, system error
-  reports (WER), kernel/memory dumps (Minidump / LiveKernelReports /
-  MEMORY.DMP), Visual Studio installer cache, system Package Cache,
-  Logitech G HUB cache, Timi game update leftovers.
+  reports (WER), Visual Studio installer cache, system Package Cache,
+  Logitech G HUB cache, Timi game update leftovers. Kernel/memory dumps
+  (Minidump / MEMORY.DMP) are deliberately NOT cleaned: they are the only
+  forensic evidence after a bluescreen or freeze.
 
 ## Safety mechanisms
 

@@ -12,7 +12,7 @@
              old app versions, Service Worker data, recycle bin)
     ADMIN - system-level, requires an elevated shell
             (Windows Temp, Windows Update cache, ProgramData caches,
-             CBS/WER logs, memory dumps)
+             CBS/WER logs; memory dumps are kept as crash evidence)
 
   Default mode is -Scan: nothing is deleted, only sizes are reported.
   Use -Clean to delete SAFE items. Add -Yes to also delete ASK items.
@@ -53,12 +53,12 @@ function Get-ItemSizeMB($item) {
 
 $script:items = @()
 
-function Add-Item([string]$path, [string]$label, [string]$cat, [switch]$ClearContents) {
+function Add-Item([string]$path, [string]$label, [string]$cat, [switch]$ClearContents, [string]$Action) {
   if (-not $path) { return }
   if (-not (Test-Path -LiteralPath $path)) { return }
   $size = Get-SizeMB $path
   if ($size -gt 0) {
-    $script:items += [PSCustomObject]@{ Path = $path; Label = $label; Cat = $cat; SizeMB = $size; ClearContents = [bool]$ClearContents }
+    $script:items += [PSCustomObject]@{ Path = $path; Label = $label; Cat = $cat; SizeMB = $size; ClearContents = [bool]$ClearContents; Action = $Action }
   }
 }
 
@@ -73,11 +73,21 @@ function Add-File($item, [string]$label, [string]$cat) {
 function Scan-CacheDirs([string]$root, [string]$labelPrefix, [string[]]$names, [string]$cat) {
   if (-not $root -or -not (Test-Path -LiteralPath $root)) { return }
   Get-ChildItem -LiteralPath $root -Recurse -Directory -Force -ErrorAction SilentlyContinue |
-    Where-Object { $names -contains $_.Name } |
+    Where-Object { $names -ccontains $_.Name } |
     ForEach-Object {
       $rel = $_.FullName.Substring($root.Length).TrimStart('\')
       Add-Item $_.FullName ($labelPrefix + $rel) $cat
     }
+}
+
+# Numeric version key for "keep the newest" comparisons: plain string sort
+# would rank v1.9 above v1.10 and delete the in-use newer version.
+function Get-VersionKey([string]$name) {
+  $m = [regex]::Match($name, '\d+(\.\d+)*')
+  if (-not $m.Success) { return [long]-1 }
+  $parts = @($m.Value.Split('.') | ForEach-Object { [int]$_ })
+  while ($parts.Count -lt 4) { $parts += 0 }
+  return [long](("{0:D5}{1:D5}{2:D5}{3:D5}" -f $parts[0], $parts[1], $parts[2], $parts[3]))
 }
 
 $L = $env:LOCALAPPDATA
@@ -109,9 +119,10 @@ Add-Item (Join-Path $R "Tencent\xwechat\crashinfo") "WeChat(New) crash info" "SA
 Add-Item (Join-Path $R "Tencent\WeChat\log") "WeChat classic log" "SAFE"
 Add-Item (Join-Path $R "Tencent\QQ\webkitex_cache") "QQ embedded browser cache" "SAFE"
 
-# CapCut runtime caches only; Projects/Resources hold user data. Download cache is ASK (below)
+# CapCut runtime caches only; Projects/Resources hold user data. Download cache is ASK (below).
+# CEF is scanned for cache-like subfolders only (it also holds cookies/local storage).
 $capcut = Join-Path $L "JianyingPro\User Data"
-Add-Item (Join-Path $capcut "CEF") "CapCut CEF runtime cache" "SAFE"
+Scan-CacheDirs (Join-Path $capcut "CEF") "CapCut CEF cache: " $cacheNames "SAFE"
 Add-Item (Join-Path $capcut "Log") "CapCut log" "SAFE"
 Add-Item (Join-Path $capcut "Tracking") "CapCut tracking logs" "SAFE"
 
@@ -131,12 +142,12 @@ if (Test-Path -LiteralPath $thumbDir) {
     ForEach-Object { Add-File $_ ("Thumbnail cache: " + $_.Name) "SAFE" }
 }
 
-# MATLAB ServiceHost: old versions + logs (keep the newest version)
+# MATLAB ServiceHost: old versions + logs (keep the newest by numeric version)
 $msh = Join-Path $L "MathWorks\ServiceHost"
 if (Test-Path -LiteralPath $msh) {
   $versions = Get-ChildItem -LiteralPath $msh -Directory -Force -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -match '^v[\d.]+$' } |
-    Sort-Object Name -Descending
+    Sort-Object { Get-VersionKey $_.Name } -Descending
   if ($versions.Count -gt 1) {
     $keep = $versions[0].Name
     $versions | Select-Object -Skip 1 |
@@ -159,7 +170,7 @@ Add-Item (Join-Path $R "Tencent\WeChat\XPlugin") "WeChat XPlugin cache" "ASK"
 Add-Item (Join-Path $R "Kingsoft\wps\addons") "WPS addons/components" "ASK"
 
 # conda: cleaned via "conda clean --all" in clean mode, never deleted directly
-Add-Item (Join-Path $env:USERPROFILE "miniconda3\pkgs") "conda package cache (conda clean)" "ASK"
+Add-Item (Join-Path $env:USERPROFILE "miniconda3\pkgs") "conda package cache (conda clean)" "ASK" -Action "CondaClean"
 Add-Item (Join-Path $env:USERPROFILE ".cargo\registry") "cargo registry cache" "ASK"
 Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK"
 
@@ -167,7 +178,7 @@ Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK
 $rbPath = "C:\`$Recycle.Bin"
 $rbSize = Get-SizeMB $rbPath
 if ($rbSize -gt 0) {
-  $script:items += [PSCustomObject]@{ Path = $rbPath; Label = "Recycle Bin (permanent)"; Cat = "ASK"; SizeMB = $rbSize }
+  $script:items += [PSCustomObject]@{ Path = $rbPath; Label = "Recycle Bin (permanent)"; Cat = "ASK"; SizeMB = $rbSize; ClearContents = $false; Action = "RecycleBin" }
 }
 
 # Updater leftover installers: installer.exe inside *updater* folders
@@ -183,12 +194,13 @@ Get-ChildItem -LiteralPath $L -Directory -Force -ErrorAction SilentlyContinue |
 Get-ChildItem -LiteralPath $L -Directory -Filter "app_shell_cache_*" -Force -ErrorAction SilentlyContinue |
   ForEach-Object { Add-Item $_.FullName "Douyin installer cache" "ASK" }
 
-# Old app-* versions in launchers (keep the newest of each family)
+# Old app-* versions in launchers (group within the same parent folder only,
+# keep the newest by numeric version - see Get-VersionKey)
 Get-ChildItem -LiteralPath $L -Directory -Force -ErrorAction SilentlyContinue |
   Where-Object { $_.Name -match "^(app|pcr)-\d" } |
-  Group-Object { $_.Name -replace "-\d[\d.]*$", "" } |
+  Group-Object { $_.Parent.FullName + "::" + ($_.Name -replace "-\d[\d.]*$", "") } |
   ForEach-Object {
-    $group = @($_.Group | Sort-Object Name -Descending)
+    $group = @($_.Group | Sort-Object { Get-VersionKey $_.Name } -Descending)
     if ($group.Count -gt 1) {
       $keep = $group[0].Name
       $group | Select-Object -Skip 1 |
@@ -205,9 +217,10 @@ Add-Item "C:\Windows\Temp" "Windows Temp (contents)" "ADMIN" -ClearContents
 Add-Item "C:\Windows\SoftwareDistribution\Download" "Windows Update download cache" "ADMIN"
 Add-Item "C:\Windows\Logs\CBS" "CBS logs (contents)" "ADMIN" -ClearContents
 Add-Item (Join-Path $env:ProgramData "Microsoft\Windows\WER") "WER reports system (contents)" "ADMIN" -ClearContents
-Add-Item "C:\Windows\Minidump" "Kernel minidumps (contents)" "ADMIN" -ClearContents
-Add-Item "C:\Windows\LiveKernelReports" "Live kernel reports (contents)" "ADMIN" -ClearContents
-Add-Item "C:\Windows\MEMORY.DMP" "Full memory dump" "ADMIN"
+# Memory dumps (Minidump / LiveKernelReports / MEMORY.DMP) are intentionally NOT
+# in this list: they are the only forensic evidence after a bluescreen/freeze,
+# and this machine is in a freeze-investigation period. Clean them manually
+# only after the evidence is no longer needed.
 
 # ---------- report ----------
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -234,10 +247,25 @@ if ($script:items.Count -eq 0) {
 function Remove-JunkItem($it) {
   $before = Get-SizeMB $it.Path
   if ($it.ClearContents) {
-    Get-ChildItem -LiteralPath $it.Path -Force -ErrorAction SilentlyContinue |
-      Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    # Windows PowerShell 5.1 Remove-Item -Recurse FOLLOWS directory junctions
+    # and would recurse into their targets. Snapshot first, then per child:
+    # reparse points are deleted as links only, dirs via rmdir (which also
+    # never enters junction targets), plain files directly.
+    $children = @(Get-ChildItem -LiteralPath $it.Path -Force -ErrorAction SilentlyContinue)
+    foreach ($child in $children) {
+      if (($child.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        Remove-Item -LiteralPath $child.FullName -Force -ErrorAction SilentlyContinue
+      } elseif ($child.PSIsContainer) {
+        cmd /c rmdir /s /q "$($child.FullName)" 2>&1 | Out-Null
+      } else {
+        Remove-Item -LiteralPath $child.FullName -Force -ErrorAction SilentlyContinue
+      }
+    }
   } else {
-    Remove-Item -LiteralPath $it.Path -Recurse -Force -ErrorAction SilentlyContinue
+    # rmdir /s /q removes the directory itself without entering junction
+    # targets (PS 5.1 Remove-Item -Recurse would follow them and could wipe
+    # user data behind a junction).
+    cmd /c rmdir /s /q "$($it.Path)" 2>&1 | Out-Null
   }
   $after = Get-SizeMB $it.Path
   return ($before - $after)
@@ -252,7 +280,7 @@ if ($Clean) {
     $targets += @($script:items | Where-Object { $_.Cat -eq "ASK" })
   }
   foreach ($it in $targets) {
-    if ($it.Label -like "Recycle Bin*") {
+    if ($it.Action -eq "RecycleBin") {
       if ($Yes) {
         Clear-RecycleBin -Force -ErrorAction SilentlyContinue
         $after = Get-SizeMB $it.Path
@@ -263,7 +291,7 @@ if ($Clean) {
       }
       continue
     }
-    if ($it.Label -like "conda package cache*") {
+    if ($it.Action -eq "CondaClean") {
       $conda = Join-Path $env:USERPROFILE "miniconda3\Scripts\conda.exe"
       if (-not (Test-Path -LiteralPath $conda)) {
         $cmd = Get-Command conda -ErrorAction SilentlyContinue
@@ -286,13 +314,15 @@ if ($Clean) {
     else { Write-Output ("Skipped/locked " + $it.Label) }
     $freed += $f
   }
-  if ($isAdmin) {
+  if ($isAdmin -and $Yes) {
     foreach ($it in @($script:items | Where-Object { $_.Cat -eq "ADMIN" })) {
       $f = Remove-JunkItem $it
       if ($f -gt 0) { Write-Output ("Deleted " + $it.Label + " (-" + $f + " MB)") }
       else { Write-Output ("Skipped/locked " + $it.Label) }
       $freed += $f
     }
+  } elseif ($isAdmin) {
+    Write-Output "ADMIN items skipped: add -Yes to clean system caches in an elevated shell."
   } elseif (@($script:items | Where-Object { $_.Cat -eq "ADMIN" }).Count -gt 0) {
     Write-Output ""
     Write-Output "ADMIN items skipped: run this script from an elevated PowerShell to clean system caches."
