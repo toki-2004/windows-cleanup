@@ -54,9 +54,10 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
   旧版本、微信/QQ 日志与崩溃信息、剪映运行时缓存、NVIDIA / DirectX 着色器
   缓存、用户级错误报告（WER）。
 * ASK：uv / npm / pip / Unity / cargo 缓存、conda 包缓存（自动调用
-  `conda clean --all`）、游戏 scratch 缓存、腾讯系应用缓存（微信小程序
-  运行时）、WPS 插件组件、浏览器 Service Worker 数据、更新器残留安装包
-  （含抖音 app_shell_cache）、旧版启动器版本、回收站。
+  `conda clean --all`）、游戏 scratch 缓存、微信内置浏览器缓存与小程序
+  插件包（检测到微信进程运行时自动跳过）、WPS 插件组件、浏览器
+  Service Worker 数据、更新器残留安装包（含抖音 app_shell_cache）、
+  旧版启动器版本、回收站。
 * ADMIN：Windows 临时文件、Windows 更新下载缓存、CBS 日志、系统错误报告
   （WER）、Visual Studio 安装包缓存、系统 Package Cache、Logitech G HUB
   缓存、天美游戏更新包残留。内核/内存转储（Minidump / MEMORY.DMP 等）刻意
@@ -68,6 +69,10 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
   不触碰书签、密码、Cookie、历史记录与本地存储。
 * 聊天数据零接触：微信/QQ 只清理 log、crashinfo 与缓存目录，
   FileStorage、xwechat_files 等聊天记录目录不在清理范围。
+* 微信内嵌浏览器运行时只清 HTTP 缓存与小程序插件包；radium 的 users、
+  web、mmkv、locales 等引擎与会话数据一律不碰，且微信运行时（含
+  WeChatAppEx 进程）会自动跳过相关项，避免表情搜索/内置浏览器/小程序
+  渲染空白、需重启微信才恢复。
 * 临时目录与系统日志（Temp、CBS、WER、Minidump 等）只清空内容、保留目录本身。
 * conda 包缓存通过 `conda clean --all` 清理，找不到 conda 时自动跳过，
   不直接删除目录。

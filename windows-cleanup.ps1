@@ -163,10 +163,15 @@ Add-Item (Join-Path $L "pip\cache") "pip cache" "ASK"
 Add-Item (Join-Path $L "Unity\cache") "Unity cache" "ASK"
 Add-Item (Join-Path $L "ForzaHorizon4\scratch") "Forza Horizon 4 scratch cache" "ASK"
 
-# Tencent app caches (mini-program / built-in browser runtimes)
-Add-Item (Join-Path $R "Tencent\xwechat\radium") "WeChat(New) radium cache" "ASK"
-Add-Item (Join-Path $R "Tencent\xwechat\xplugin") "WeChat(New) xplugin cache" "ASK"
-Add-Item (Join-Path $R "Tencent\WeChat\XPlugin") "WeChat XPlugin cache" "ASK"
+# Tencent WeChat embedded-browser runtime. Only the HTTP cache and the
+# mini-program plugin package dir are junk. radium/users, /web, /mmkv,
+# /locales and device_uuid hold session data and engine resources that
+# WeChat does NOT regenerate while running: deleting them blanks the emoji
+# search / built-in browser / mini-program panels until WeChat restarts.
+# These entries are skipped automatically while any WeChat process is alive.
+Add-Item (Join-Path $R "Tencent\xwechat\radium\cache") "WeChat(New) embedded-browser cache (close WeChat first)" "ASK" -Action "WeChatClean"
+Add-Item (Join-Path $R "Tencent\xwechat\xplugin") "WeChat(New) mini-program plugin cache (close WeChat first)" "ASK" -Action "WeChatClean"
+Add-Item (Join-Path $R "Tencent\WeChat\XPlugin") "WeChat classic mini-program plugin cache (close WeChat first)" "ASK" -Action "WeChatClean"
 Add-Item (Join-Path $R "Kingsoft\wps\addons") "WPS addons/components" "ASK"
 
 # conda: cleaned via "conda clean --all" in clean mode, never deleted directly
@@ -307,6 +312,14 @@ if ($Clean) {
       } else {
         Write-Output "Skipped conda package cache: conda.exe not found (pkgs folder NOT deleted directly)"
       }
+      continue
+    }
+    # WeChat web-runtime items: a running WeChat locks its files, and a
+    # partial delete corrupts the embedded browser (blank panels until
+    # restart) - skip while any WeChat process is alive.
+    if ($it.Action -eq "WeChatClean" -and
+        @(Get-Process -Name "Weixin","WeChat","WeChatAppEx","WeChatPlayer","WeChatApp" -ErrorAction SilentlyContinue).Count -gt 0) {
+      Write-Output ("Skipped " + $it.Label + " (WeChat is running - quit WeChat and run again)")
       continue
     }
     $f = Remove-JunkItem $it

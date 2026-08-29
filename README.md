@@ -54,10 +54,11 @@ For ADMIN items, run the script from an elevated PowerShell
   MATLAB ServiceHost versions, WeChat/QQ logs and crash info, CapCut runtime
   caches, NVIDIA / DirectX shader caches, user-level Windows Error Reporting.
 * ASK: uv / npm / pip / Unity / cargo caches, conda package cache (runs
-  `conda clean --all` automatically), game scratch caches, Tencent app caches
-  (WeChat mini-program runtimes), WPS addons, browser Service Worker data,
-  updater leftover installers (including Douyin app_shell_cache), old launcher
-  versions, Recycle Bin.
+  `conda clean --all` automatically), game scratch caches, WeChat
+  embedded-browser cache and mini-program plugin packages (skipped
+  automatically while WeChat is running), WPS addons, browser Service
+  Worker data, updater leftover installers (including Douyin
+  app_shell_cache), old launcher versions, Recycle Bin.
 * ADMIN: Windows Temp, Windows Update download cache, CBS logs, system error
   reports (WER), Visual Studio installer cache, system Package Cache,
   Logitech G HUB cache, Timi game update leftovers. Kernel/memory dumps
@@ -72,6 +73,12 @@ For ADMIN items, run the script from an elevated PowerShell
 * Chat data is off limits: WeChat/QQ only expose their log, crash info and
   cache folders; chat history folders (FileStorage, xwechat_files, ...) are
   not in scope.
+* The WeChat embedded-browser runtime is cleaned down to its HTTP cache and
+  mini-program plugin packages only; radium users/web/mmkv/locales (engine
+  and session data) are never touched, and WeChat-related items are skipped
+  automatically while any WeChat process is running - deleting them under a
+  running WeChat blanks the emoji search / built-in browser / mini-program
+  panels until restart.
 * Temp folders and system logs (Temp, CBS, WER, Minidump, ...) are emptied in
   place - the folders themselves are kept.
 * The conda package cache is cleaned via `conda clean --all`; if conda cannot
