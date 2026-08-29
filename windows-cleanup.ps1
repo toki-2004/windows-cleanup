@@ -5,11 +5,14 @@
 .DESCRIPTION
   Categories:
     SAFE  - 100% junk, regenerated automatically
-            (temp files, browser caches, crash dumps, thumbnails)
+            (temp files, browser/Steam caches, app logs, shader caches,
+             crash dumps, thumbnails)
     ASK   - regenerable but possibly useful
-            (package caches, updater leftovers, old app versions, recycle bin)
+            (package caches - conda via "conda clean", updater leftovers,
+             old app versions, Service Worker data, recycle bin)
     ADMIN - system-level, requires an elevated shell
-            (Windows Temp, Windows Update cache, ProgramData caches)
+            (Windows Temp, Windows Update cache, ProgramData caches,
+             CBS/WER logs, memory dumps)
 
   Default mode is -Scan: nothing is deleted, only sizes are reported.
   Use -Clean to delete SAFE items. Add -Yes to also delete ASK items.
@@ -50,12 +53,12 @@ function Get-ItemSizeMB($item) {
 
 $script:items = @()
 
-function Add-Item([string]$path, [string]$label, [string]$cat) {
+function Add-Item([string]$path, [string]$label, [string]$cat, [switch]$ClearContents) {
   if (-not $path) { return }
   if (-not (Test-Path -LiteralPath $path)) { return }
   $size = Get-SizeMB $path
   if ($size -gt 0) {
-    $script:items += [PSCustomObject]@{ Path = $path; Label = $label; Cat = $cat; SizeMB = $size }
+    $script:items += [PSCustomObject]@{ Path = $path; Label = $label; Cat = $cat; SizeMB = $size; ClearContents = [bool]$ClearContents }
   }
 }
 
@@ -63,35 +66,63 @@ function Add-File($item, [string]$label, [string]$cat) {
   if (-not $item) { return }
   $size = Get-ItemSizeMB $item
   if ($size -gt 0) {
-    $script:items += [PSCustomObject]@{ Path = $item.FullName; Label = $label; Cat = $cat; SizeMB = $size }
+    $script:items += [PSCustomObject]@{ Path = $item.FullName; Label = $label; Cat = $cat; SizeMB = $size; ClearContents = $false }
   }
+}
+
+function Scan-CacheDirs([string]$root, [string]$labelPrefix, [string[]]$names, [string]$cat) {
+  if (-not $root -or -not (Test-Path -LiteralPath $root)) { return }
+  Get-ChildItem -LiteralPath $root -Recurse -Directory -Force -ErrorAction SilentlyContinue |
+    Where-Object { $names -contains $_.Name } |
+    ForEach-Object {
+      $rel = $_.FullName.Substring($root.Length).TrimStart('\')
+      Add-Item $_.FullName ($labelPrefix + $rel) $cat
+    }
 }
 
 $L = $env:LOCALAPPDATA
 $R = $env:APPDATA
 
 # ---------- SAFE items ----------
-Add-Item (Join-Path $L "Temp") "User temp files (contents)" "SAFE"
+Add-Item (Join-Path $L "Temp") "User temp files (contents)" "SAFE" -ClearContents
 Add-Item (Join-Path $L "CrashDumps") "Crash dumps" "SAFE"
 Add-Item (Join-Path $L "Microsoft\Windows\WebCache") "WebCache (close browsers first)" "SAFE"
 
-# Browser caches: exact folder names only, never profile data
-$browserRoots = @(
+# Browser caches: exact folder names only, never profile/cookie data.
+# Service Worker / Media Cache go to ASK (some web apps keep offline state there).
+$cacheNames = @("Cache", "Code Cache", "GPUCache", "GrShaderCache", "ShaderCache", "DawnWebGPUCache", "cache2")
+$swNames = @("Service Worker", "Media Cache")
+$chromiumRoots = @(
   (Join-Path $L "Microsoft\Edge\User Data"),
   (Join-Path $L "Google\Chrome\User Data"),
-  (Join-Path $L "BraveSoftware\Brave-Browser\User Data"),
-  (Join-Path $R "Mozilla\Firefox\Profiles")
+  (Join-Path $L "BraveSoftware\Brave-Browser\User Data")
 )
-$cacheNames = @("Cache", "Code Cache", "GPUCache", "GrShaderCache", "ShaderCache", "DawnWebGPUCache", "cache2")
-foreach ($root in $browserRoots) {
-  if (-not (Test-Path -LiteralPath $root)) { continue }
-  Get-ChildItem -LiteralPath $root -Recurse -Directory -Force -ErrorAction SilentlyContinue |
-    Where-Object { $cacheNames -contains $_.Name } |
-    ForEach-Object {
-      $rel = $_.FullName.Substring($root.Length).TrimStart('\')
-      Add-Item $_.FullName ("Browser cache: " + $rel) "SAFE"
-    }
-}
+foreach ($root in $chromiumRoots) { Scan-CacheDirs $root "Browser cache: " $cacheNames "SAFE" }
+foreach ($root in $chromiumRoots) { Scan-CacheDirs $root "Browser Service Worker: " $swNames "ASK" }
+Scan-CacheDirs (Join-Path $R "Mozilla\Firefox\Profiles") "Browser cache: " $cacheNames "SAFE"
+# Steam embedded browser: cache-like subfolders only, keeps cookies/localStorage
+Scan-CacheDirs (Join-Path $L "Steam\htmlcache") "Steam web cache: " $cacheNames "SAFE"
+
+# App logs / crash info (regenerate on next run; chat data folders untouched)
+Add-Item (Join-Path $R "Tencent\xwechat\log") "WeChat(New) log" "SAFE"
+Add-Item (Join-Path $R "Tencent\xwechat\crashinfo") "WeChat(New) crash info" "SAFE"
+Add-Item (Join-Path $R "Tencent\WeChat\log") "WeChat classic log" "SAFE"
+Add-Item (Join-Path $R "Tencent\QQ\webkitex_cache") "QQ embedded browser cache" "SAFE"
+
+# CapCut runtime caches only; Projects/Resources hold user data. Download cache is ASK (below)
+$capcut = Join-Path $L "JianyingPro\User Data"
+Add-Item (Join-Path $capcut "CEF") "CapCut CEF runtime cache" "SAFE"
+Add-Item (Join-Path $capcut "Log") "CapCut log" "SAFE"
+Add-Item (Join-Path $capcut "Tracking") "CapCut tracking logs" "SAFE"
+
+# GPU shader caches (regenerated; first game/app launch recompiles shaders)
+Add-Item (Join-Path $L "NVIDIA\DXCache") "NVIDIA DX shader cache" "SAFE"
+Add-Item (Join-Path $L "NVIDIA\GLCache") "NVIDIA GL shader cache" "SAFE"
+Add-Item (Join-Path $L "NVIDIA\OptixCache") "NVIDIA Optix cache" "SAFE"
+Add-Item (Join-Path $L "D3DSCache") "DirectX shader cache" "SAFE"
+
+# Windows Error Reporting, user level: queued crash reports only
+Add-Item (Join-Path $L "Microsoft\Windows\WER") "WER reports user (contents)" "SAFE" -ClearContents
 
 # Explorer thumbnail cache
 $thumbDir = Join-Path $L "Microsoft\Windows\Explorer"
@@ -127,6 +158,11 @@ Add-Item (Join-Path $R "Tencent\xwechat\xplugin") "WeChat(New) xplugin cache" "A
 Add-Item (Join-Path $R "Tencent\WeChat\XPlugin") "WeChat XPlugin cache" "ASK"
 Add-Item (Join-Path $R "Kingsoft\wps\addons") "WPS addons/components" "ASK"
 
+# conda: cleaned via "conda clean --all" in clean mode, never deleted directly
+Add-Item (Join-Path $env:USERPROFILE "miniconda3\pkgs") "conda package cache (conda clean)" "ASK"
+Add-Item (Join-Path $env:USERPROFILE ".cargo\registry") "cargo registry cache" "ASK"
+Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK"
+
 # Recycle bin (permanent delete - only with -Yes)
 $rbPath = "C:\`$Recycle.Bin"
 $rbSize = Get-SizeMB $rbPath
@@ -142,6 +178,10 @@ Get-ChildItem -LiteralPath $L -Directory -Force -ErrorAction SilentlyContinue |
       Where-Object { $_.Name -match "^installer.*\.exe$" } |
       ForEach-Object { Add-File $_ ("Updater leftover: " + $_.Directory.Name + "\" + $_.Name) "ASK" }
   }
+
+# Douyin desktop installer cache: app_shell_cache_<id> folders in LocalAppData
+Get-ChildItem -LiteralPath $L -Directory -Filter "app_shell_cache_*" -Force -ErrorAction SilentlyContinue |
+  ForEach-Object { Add-Item $_.FullName "Douyin installer cache" "ASK" }
 
 # Old app-* versions in launchers (keep the newest of each family)
 Get-ChildItem -LiteralPath $L -Directory -Force -ErrorAction SilentlyContinue |
@@ -161,8 +201,13 @@ Add-Item (Join-Path $env:ProgramData "Timi Personal Computing\Update") "Timi gam
 Add-Item (Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages") "Visual Studio installer cache" "ADMIN"
 Add-Item (Join-Path $env:ProgramData "Package Cache") "System Package Cache" "ADMIN"
 Add-Item (Join-Path $env:ProgramData "LGHUB\cache") "Logitech G HUB cache" "ADMIN"
-Add-Item "C:\Windows\Temp" "Windows Temp (contents)" "ADMIN"
+Add-Item "C:\Windows\Temp" "Windows Temp (contents)" "ADMIN" -ClearContents
 Add-Item "C:\Windows\SoftwareDistribution\Download" "Windows Update download cache" "ADMIN"
+Add-Item "C:\Windows\Logs\CBS" "CBS logs (contents)" "ADMIN" -ClearContents
+Add-Item (Join-Path $env:ProgramData "Microsoft\Windows\WER") "WER reports system (contents)" "ADMIN" -ClearContents
+Add-Item "C:\Windows\Minidump" "Kernel minidumps (contents)" "ADMIN" -ClearContents
+Add-Item "C:\Windows\LiveKernelReports" "Live kernel reports (contents)" "ADMIN" -ClearContents
+Add-Item "C:\Windows\MEMORY.DMP" "Full memory dump" "ADMIN"
 
 # ---------- report ----------
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -188,7 +233,7 @@ if ($script:items.Count -eq 0) {
 
 function Remove-JunkItem($it) {
   $before = Get-SizeMB $it.Path
-  if ($it.Label -like "*temp files*" -or $it.Label -like "*Windows Temp*") {
+  if ($it.ClearContents) {
     Get-ChildItem -LiteralPath $it.Path -Force -ErrorAction SilentlyContinue |
       Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
   } else {
@@ -215,6 +260,24 @@ if ($Clean) {
         if ($f -gt 0) { Write-Output ("Deleted " + $it.Label + " (-" + $f + " MB)") }
         else { Write-Output ("Skipped/locked " + $it.Label) }
         $freed += $f
+      }
+      continue
+    }
+    if ($it.Label -like "conda package cache*") {
+      $conda = Join-Path $env:USERPROFILE "miniconda3\Scripts\conda.exe"
+      if (-not (Test-Path -LiteralPath $conda)) {
+        $cmd = Get-Command conda -ErrorAction SilentlyContinue
+        if ($cmd) { $conda = $cmd.Source }
+      }
+      if ($conda -and (Test-Path -LiteralPath $conda)) {
+        & $conda clean --all -y | Out-Null
+        $after = Get-SizeMB $it.Path
+        $f = $it.SizeMB - $after
+        if ($f -gt 0) { Write-Output ("Deleted " + $it.Label + " (-" + $f + " MB)") }
+        else { Write-Output ("Nothing to clean " + $it.Label) }
+        $freed += $f
+      } else {
+        Write-Output "Skipped conda package cache: conda.exe not found (pkgs folder NOT deleted directly)"
       }
       continue
     }
