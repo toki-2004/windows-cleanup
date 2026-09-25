@@ -47,6 +47,23 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
 For ADMIN items, run the script from an elevated PowerShell
 (right-click the PowerShell icon > Run as administrator).
 
+## Finding what to clean on a drive
+
+`windows-cleanup.ps1` only cleans a fixed list of well-known junk paths. To see
+what actually occupies a drive first - top-level folder sizes, cache-like
+folders, outdated side-by-side versions, loose installers in the drive root,
+and what the recycle bin still holds - use the read-only scanner:
+
+```powershell
+python scan-drive.py D:
+python scan-drive.py D: --min-mb 200   # only list entries of 200 MB or more
+python scan-drive.py --self-check      # check the version-sort / parsing logic
+```
+
+It walks the drive once and prints candidates for review. Nothing is deleted,
+and directory junctions are never followed. The scanner needs Python 3.7+;
+`windows-cleanup.ps1` itself still runs on stock Windows PowerShell.
+
 ## What is cleaned
 
 * SAFE: user temp files, browser caches (Edge / Chrome / Brave / Firefox),

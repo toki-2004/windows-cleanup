@@ -51,6 +51,23 @@ function Get-ItemSizeMB($item) {
   return [math]::Round($item.Length / 1MB, 1)
 }
 
+function Show-FreeSpace {
+  foreach ($d in (Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue)) {
+    Write-Output (" Free " + $d.DeviceID + "  " + [math]::Round($d.FreeSpace / 1GB, 1) + " GB")
+  }
+}
+
+# Clear-RecycleBin empties EVERY drive's bin, so the reported size must be the
+# sum over all fixed disks - otherwise clearing a 19 GB D: bin would look like
+# it freed nothing. Fixed disks only: probing a dead network drive would stall.
+function Get-RecycleBinSizeMB {
+  $total = 0
+  foreach ($d in (Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue)) {
+    $total += Get-SizeMB ($d.DeviceID + "\`$Recycle.Bin")
+  }
+  return [math]::Round($total, 1)
+}
+
 $script:items = @()
 
 function Add-Item([string]$path, [string]$label, [string]$cat, [switch]$ClearContents, [string]$Action) {
@@ -202,7 +219,7 @@ Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK
 
 # Recycle bin (permanent delete - only with -Yes)
 $rbPath = "C:\`$Recycle.Bin"
-$rbSize = Get-SizeMB $rbPath
+$rbSize = Get-RecycleBinSizeMB
 if ($rbSize -gt 0) {
   $script:items += [PSCustomObject]@{ Path = $rbPath; Label = "Recycle Bin, ALL drives (permanent)"; Cat = "ASK"; SizeMB = $rbSize; ClearContents = $false; Action = "RecycleBin" }
 }
@@ -254,7 +271,7 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
 Write-Output "=========================================="
 Write-Output " Windows Cleanup"
 Write-Output (" Machine: " + $env:COMPUTERNAME + "   Elevated: " + $isAdmin)
-Write-Output (" Free C:  " + [math]::Round((Get-PSDrive C).Free / 1GB, 1) + " GB")
+Show-FreeSpace
 Write-Output "=========================================="
 
 if ($script:items.Count -eq 0) {
@@ -309,7 +326,7 @@ if ($Clean) {
     if ($it.Action -eq "RecycleBin") {
       if ($Yes) {
         Clear-RecycleBin -Force -ErrorAction SilentlyContinue
-        $after = Get-SizeMB $it.Path
+        $after = Get-RecycleBinSizeMB
         $f = $it.SizeMB - $after
         if ($f -gt 0) { Write-Output ("Deleted " + $it.Label + " (-" + $f + " MB)") }
         else { Write-Output ("Skipped/locked " + $it.Label) }
@@ -359,7 +376,8 @@ if ($Clean) {
   }
   Write-Output ""
   Write-Output ("Total freed: " + [math]::Round($freed / 1024, 2) + " GB")
-  Write-Output ("Free C now:  " + [math]::Round((Get-PSDrive C).Free / 1GB, 1) + " GB")
+  Write-Output "Free space now:"
+  Show-FreeSpace
 } else {
   Write-Output ""
   Write-Output "Run with -Clean to delete SAFE items; add -Yes for ASK items; elevate for ADMIN items."

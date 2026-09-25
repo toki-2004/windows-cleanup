@@ -47,6 +47,21 @@ powershell -ExecutionPolicy Bypass -File windows-cleanup.ps1 -Clean -Yes
 右键点击"Windows PowerShell"或"终端"图标 → 选择"以管理员身份运行"，
 然后再执行上面的命令。
 
+## 先看清盘里有什么
+
+`windows-cleanup.ps1` 只清理固定的常见垃圾路径。想知道某个盘**实际**被什么占满
+（顶层目录大小、像缓存的目录、同款软件的多个旧版本、盘根散落的安装包、回收站
+还剩什么），先跑旁边的只读扫描器：
+
+```powershell
+python scan-drive.py D:
+python scan-drive.py D: --min-mb 200   # 只列出 200 MB 以上的条目
+python scan-drive.py --self-check      # 校验版本号排序与回收站记录解析
+```
+
+扫描器只读、不删除任何文件，也不跟随目录联接（junction）。扫描器需要
+Python 3.7+；`windows-cleanup.ps1` 本身仍然只依赖系统自带的 Windows PowerShell。
+
 ## 清理内容
 
 * SAFE：用户临时文件、浏览器缓存（Edge / Chrome / Brave / Firefox）、
