@@ -135,6 +135,13 @@ Add-Item (Join-Path $R "Tencent\xwechat\log") "WeChat(New) log" "SAFE"
 Add-Item (Join-Path $R "Tencent\xwechat\crashinfo") "WeChat(New) crash info" "SAFE"
 Add-Item (Join-Path $R "Tencent\WeChat\log") "WeChat classic log" "SAFE"
 Add-Item (Join-Path $R "Tencent\QQ\webkitex_cache") "QQ embedded browser cache" "SAFE"
+# Other app caches: same exact-name rule, local storage/cookies never touched.
+Scan-CacheDirs (Join-Path $R "qq_guild") "QQ Guild cache: " $cacheNames "SAFE"
+Add-Item (Join-Path $R "webcast_mate\gecko_cache") "NetEase live-companion gecko cache" "SAFE"
+Add-Item (Join-Path $R "webcast_mate\logs") "NetEase live-companion logs" "SAFE"
+Add-Item (Join-Path $R "SodaMusic\LunaCacheV2") "Soda Music cache" "SAFE"
+Add-Item (Join-Path $R "riot-client-ux\Cache") "Riot Client web cache" "SAFE"
+Add-Item (Join-Path $env:PUBLIC "Documents\CNKI E-Study\cef_root_cache") "CNKI E-Study browser cache" "SAFE"
 
 # CapCut runtime caches only; Projects/Resources hold user data. Download cache is ASK (below).
 # CEF is scanned for cache-like subfolders only (it also holds cookies/local storage).
@@ -143,10 +150,22 @@ Scan-CacheDirs (Join-Path $capcut "CEF") "CapCut CEF cache: " $cacheNames "SAFE"
 Add-Item (Join-Path $capcut "Log") "CapCut log" "SAFE"
 Add-Item (Join-Path $capcut "Tracking") "CapCut tracking logs" "SAFE"
 
+Add-Item (Join-Path $capcut "Cache") "CapCut runtime cache" "SAFE"
+
+# WeChat(New) radium webview profiles: Chromium HTTP caches only. Session and
+# engine data lives in users/, web/, mmkv/ - the exact-name filter below
+# matches nothing there, so only Cache / Code Cache / GPUCache get listed.
+Scan-CacheDirs (Join-Path $R "Tencent\xwechat\radium\web\profiles") "WeChat(New) profile cache: " $cacheNames "SAFE"
+
+# Epic Games Launcher embedded-browser cache (rebuilt on next launch)
+Scan-CacheDirs (Join-Path $L "EpicGamesLauncher\Saved") "Epic launcher web cache: " @("webcache_4430") "SAFE"
+
 # GPU shader caches (regenerated; first game/app launch recompiles shaders)
 Add-Item (Join-Path $L "NVIDIA\DXCache") "NVIDIA DX shader cache" "SAFE"
 Add-Item (Join-Path $L "NVIDIA\GLCache") "NVIDIA GL shader cache" "SAFE"
 Add-Item (Join-Path $L "NVIDIA\OptixCache") "NVIDIA Optix cache" "SAFE"
+Add-Item (Join-Path $env:USERPROFILE "AppData\LocalLow\NVIDIA\DXCache") "NVIDIA DX shader cache (LocalLow)" "SAFE"
+Add-Item (Join-Path $env:USERPROFILE "AppData\LocalLow\NVIDIA\PerDriverVersion\DXCache") "NVIDIA DX shader cache (per driver)" "SAFE"
 Add-Item (Join-Path $L "D3DSCache") "DirectX shader cache" "SAFE"
 
 # Windows Error Reporting, user level: queued crash reports only
@@ -190,6 +209,7 @@ Add-Item (Join-Path $R "Tencent\xwechat\radium\cache") "WeChat(New) embedded-bro
 Add-Item (Join-Path $R "Tencent\xwechat\xplugin") "WeChat(New) mini-program plugin cache (close WeChat first)" "ASK" -Action "WeChatClean"
 Add-Item (Join-Path $R "Tencent\WeChat\XPlugin") "WeChat classic mini-program plugin cache (close WeChat first)" "ASK" -Action "WeChatClean"
 Add-Item (Join-Path $R "Kingsoft\wps\addons") "WPS addons/components" "ASK"
+Add-Item (Join-Path $L "QuarkCloudDrive\User Data\updates") "Quark Cloud Drive updater leftovers" "ASK"
 
 # conda: cleaned via "conda clean --all" in clean mode, never deleted directly.
 # Resolve the install from conda.exe itself so the scanned pkgs dir and the
@@ -215,6 +235,7 @@ if ($condaInstall) {
   Add-Item $condaInstall.Pkgs "conda package cache (conda clean)" "ASK" -Action "CondaClean"
 }
 Add-Item (Join-Path $env:USERPROFILE ".cargo\registry") "cargo registry cache" "ASK"
+Add-Item (Join-Path $env:USERPROFILE ".gradle\caches") "Gradle dependency cache" "ASK"
 Add-Item (Join-Path $capcut "Download") "CapCut downloaded materials cache" "ASK"
 
 # Recycle bin (permanent delete - only with -Yes)
@@ -251,15 +272,31 @@ Get-ChildItem -LiteralPath $L -Directory -Force -ErrorAction SilentlyContinue |
     }
   }
 
+# QQ(NT) ships one bundled Chromium runtime per app version; only the newest is
+# in use, the rest are leftovers. Confirm QQ is closed before deleting.
+$qqlibcef = Join-Path $R "Tencent\QQ\libcef"
+if (Test-Path -LiteralPath $qqlibcef) {
+  $cef = Get-ChildItem -LiteralPath $qqlibcef -Directory -Force -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
+    Sort-Object { Get-VersionKey $_.Name } -Descending
+  if ($cef.Count -gt 1) {
+    $keep = $cef[0].Name
+    $cef | Select-Object -Skip 1 |
+      ForEach-Object { Add-Item $_.FullName ("QQ libcef old version: " + $_.Name + " (keep " + $keep + ")") "ASK" }
+  }
+}
+
 # ---------- ADMIN items ----------
 Add-Item (Join-Path $env:ProgramData "Timi Personal Computing\Update") "Timi game update leftovers" "ADMIN"
 Add-Item (Join-Path $env:ProgramData "Microsoft\VisualStudio\Packages") "Visual Studio installer cache" "ADMIN"
 Add-Item (Join-Path $env:ProgramData "Package Cache") "System Package Cache" "ADMIN"
 Add-Item (Join-Path $env:ProgramData "LGHUB\cache") "Logitech G HUB cache" "ADMIN"
+Add-Item (Join-Path $env:ProgramData "MI\XiaoaiService\cache") "Xiaomi Xiaoai service cache" "ADMIN"
 Add-Item "C:\Windows\Temp" "Windows Temp (contents)" "ADMIN" -ClearContents
 Add-Item "C:\Windows\SoftwareDistribution\Download" "Windows Update download cache" "ADMIN"
 Add-Item "C:\Windows\Logs\CBS" "CBS logs (contents)" "ADMIN" -ClearContents
 Add-Item (Join-Path $env:ProgramData "Microsoft\Windows\WER") "WER reports system (contents)" "ADMIN" -ClearContents
+Add-Item "C:\Windows\LastGood.Tmp" "Windows update rollback leftovers" "ADMIN"
 # Memory dumps (Minidump / LiveKernelReports / MEMORY.DMP) are intentionally NOT
 # in this list: they are the only forensic evidence after a bluescreen/freeze,
 # and this machine is in a freeze-investigation period. Clean them manually

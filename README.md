@@ -16,6 +16,7 @@ To run the tool without typing commands, double-click `一键清理.bat`
 * [2] Quick clean - SAFE items (100% junk)
 * [3] Deep clean - SAFE + ASK items (also regenerable caches)
 * [4] Admin deep clean - also ADMIN items (UAC prompt)
+* [5] Drive scan - read-only report for any drive (needs Python)
 * [0] Exit
 
 ![Menu](assets/menu.png)
@@ -69,16 +70,20 @@ and directory junctions are never followed. The scanner needs Python 3.7+;
 * SAFE: user temp files, browser caches (Edge / Chrome / Brave / Firefox),
   Steam's embedded browser cache, crash dumps, thumbnail caches, WebCache, old
   MATLAB ServiceHost versions, WeChat/QQ logs and crash info, CapCut runtime
-  caches, NVIDIA / DirectX shader caches, user-level Windows Error Reporting.
-* ASK: uv / npm / pip / Unity / cargo caches, conda package cache (runs
+  caches, NVIDIA / DirectX shader caches, user-level Windows Error Reporting,
+  plus QQ Guild, NetEase live-stream companion, Soda Music, Riot Client,
+  CNKI E-Study, Epic Games Launcher and WeChat webview profile caches.
+* ASK: uv / npm / pip / Unity / cargo / Gradle caches, conda package cache (runs
   `conda clean --all` automatically), game scratch caches, WeChat
   embedded-browser cache and mini-program plugin packages (skipped
   automatically while WeChat is running), WPS addons, browser Service
   Worker data, updater leftover installers (including Douyin
-  app_shell_cache), old launcher versions, Recycle Bin.
+  app_shell_cache), old launcher versions, old QQ bundled-Chromium runtimes,
+  Quark Cloud Drive updater leftovers, Recycle Bin.
 * ADMIN: Windows Temp, Windows Update download cache, CBS logs, system error
   reports (WER), Visual Studio installer cache, system Package Cache,
-  Logitech G HUB cache, Timi game update leftovers. Kernel/memory dumps
+  Logitech G HUB cache, Timi game update leftovers, Xiaomi Xiaoai service
+  cache, Windows update rollback leftovers (LastGood.Tmp). Kernel/memory dumps
   (Minidump / MEMORY.DMP) are deliberately NOT cleaned: they are the only
   forensic evidence after a bluescreen or freeze.
 
