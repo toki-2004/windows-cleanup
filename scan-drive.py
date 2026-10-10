@@ -98,7 +98,7 @@ def walk(path, level, inside_junk):
         TOPS.append((total, path))
     versions = [(version_key(n), n, s) for n, s in child.items()]
     versions = [v for v in versions if v[0]]
-    if len(versions) >= 2 and os.path.basename(path).lower() not in NO_VERSION_HINT:
+    if len(versions) >= 2 and not ({p.lower() for p in path.split(os.sep)} & NO_VERSION_HINT):
         versions.sort()
         old = versions[:-1]
         old_total = sum(v[2] for v in old)
