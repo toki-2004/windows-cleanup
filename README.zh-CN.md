@@ -68,9 +68,11 @@ Python 3.7+；`windows-cleanup.ps1` 本身仍然只依赖系统自带的 Windows
 * SAFE：用户临时文件、浏览器缓存（Edge / Chrome / Brave / Firefox）、
   Steam 内置浏览器缓存、崩溃转储、缩略图缓存、WebCache、MATLAB ServiceHost
   旧版本、微信/QQ 日志与崩溃信息、剪映运行时缓存、NVIDIA / DirectX 着色器
-  缓存、用户级错误报告（WER）、QQ频道 / 网易直播伴侣 / 汽水音乐 / Riot
-  客户端 / CNKI E-Study / Epic 启动器 / 微信 webview profile 缓存。
-* ASK：uv / npm / pip / Unity / cargo / Gradle 缓存、conda 包缓存（自动调用
+  缓存、用户级错误报告（WER）、QQ频道 / 网易直播伴侣（日志、网页缓存、
+  媒体 SDK 日志）/ 汽水音乐 / Riot 客户端 / CNKI E-Study / Epic 启动器 /
+  微信 webview profile 缓存。
+* ASK：uv / npm / pip / Unity / cargo / Gradle 缓存、Hugging Face 模型缓存、
+  conda 包缓存（自动调用
   `conda clean --all`）、游戏 scratch 缓存、微信内置浏览器缓存与小程序
   插件包（检测到微信进程运行时自动跳过）、WPS 插件组件、浏览器
   Service Worker 数据、更新器残留安装包（含抖音 app_shell_cache）、

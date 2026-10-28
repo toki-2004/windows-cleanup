@@ -139,6 +139,9 @@ Add-Item (Join-Path $R "Tencent\QQ\webkitex_cache") "QQ embedded browser cache" 
 Scan-CacheDirs (Join-Path $R "qq_guild") "QQ Guild cache: " $cacheNames "SAFE"
 Add-Item (Join-Path $R "webcast_mate\gecko_cache") "NetEase live-companion gecko cache" "SAFE"
 Add-Item (Join-Path $R "webcast_mate\logs") "NetEase live-companion logs" "SAFE"
+Add-Item (Join-Path $R "webcast_mate\biz-logs") "NetEase live-companion business logs" "SAFE"
+Add-Item (Join-Path $R "webcast_mate\Cache") "NetEase live-companion web cache" "SAFE"
+Add-Item (Join-Path $R "webcast_mate\mediasdk_log") "NetEase live-companion media SDK logs" "SAFE"
 Add-Item (Join-Path $R "SodaMusic\LunaCacheV2") "Soda Music cache" "SAFE"
 Add-Item (Join-Path $R "riot-client-ux\Cache") "Riot Client web cache" "SAFE"
 Add-Item (Join-Path $env:PUBLIC "Documents\CNKI E-Study\cef_root_cache") "CNKI E-Study browser cache" "SAFE"
@@ -198,6 +201,9 @@ Add-Item (Join-Path $L "npm-cache") "npm cache" "ASK"
 Add-Item (Join-Path $L "pip\cache") "pip cache" "ASK"
 Add-Item (Join-Path $L "Unity\cache") "Unity cache" "ASK"
 Add-Item (Join-Path $L "ForzaHorizon4\scratch") "Forza Horizon 4 scratch cache" "ASK"
+# Hugging Face / generic python model cache: re-downloaded on demand, may be
+# needed offline, so it stays in ASK instead of SAFE.
+Add-Item (Join-Path $env:USERPROFILE ".cache\huggingface") "Hugging Face model cache" "ASK"
 
 # Tencent WeChat embedded-browser runtime. Only the HTTP cache and the
 # mini-program plugin package dir are junk. radium/users, /web, /mmkv,

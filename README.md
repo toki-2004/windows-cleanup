@@ -71,9 +71,11 @@ and directory junctions are never followed. The scanner needs Python 3.7+;
   Steam's embedded browser cache, crash dumps, thumbnail caches, WebCache, old
   MATLAB ServiceHost versions, WeChat/QQ logs and crash info, CapCut runtime
   caches, NVIDIA / DirectX shader caches, user-level Windows Error Reporting,
-  plus QQ Guild, NetEase live-stream companion, Soda Music, Riot Client,
+  plus QQ Guild, NetEase live-stream companion (logs, web cache, media-SDK
+  logs), Soda Music, Riot Client,
   CNKI E-Study, Epic Games Launcher and WeChat webview profile caches.
-* ASK: uv / npm / pip / Unity / cargo / Gradle caches, conda package cache (runs
+* ASK: uv / npm / pip / Unity / cargo / Gradle caches, Hugging Face model cache,
+  conda package cache (runs
   `conda clean --all` automatically), game scratch caches, WeChat
   embedded-browser cache and mini-program plugin packages (skipped
   automatically while WeChat is running), WPS addons, browser Service
